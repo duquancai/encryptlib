@@ -3,8 +3,6 @@ package gorsa
 import (
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/x509"
-	"encoding/base64"
 	"math/big"
 )
 
@@ -95,7 +93,7 @@ func PubKeyEncrypt_NoPad(msg, hexE, hexN string, args ...interface{}) []byte {
 
 // 仅适合0-255的字符加密
 func PriKeyDecrypt_NoPad(msg []byte, priPEM string) string {
-	pri, _ := GetPriKey([]byte(priPEM))
+	pri, _ := GetPriKey_PEM([]byte(priPEM))
 	c := new(big.Int).SetBytes(msg)
 	plainText := c.Exp(c, pri.D, pri.N).Bytes()
 	return string(plainText)
@@ -118,24 +116,8 @@ func PubKeyEncrypt_E_N(msg, hexE, hexN string) []byte {
 	return resb
 }
 
-func PubKeyEncrypt_b64(plainText []byte, pubBase64 string) ([]byte, error) {
-	// Base64 decode.
-	publicKeyBinary, err := base64.StdEncoding.DecodeString(pubBase64)
-	if err != nil {
-		return nil, err
-	}
-
-	rsaPk, err := x509.ParsePKIXPublicKey(publicKeyBinary)
-	if err != nil {
-		return nil, err
-	}
-	if err != nil {
-		rsaPk, err = x509.ParsePKCS1PublicKey(publicKeyBinary)
-		if err != nil {
-			return nil, err
-		}
-	}
-	var pubKey *rsa.PublicKey = rsaPk.(*rsa.PublicKey)
+func PubEncrypt_PubStr(plainText []byte, pubstr string) ([]byte, error) {
+	pubKey, _ := GetPubKey_Pubstr(pubstr)
 	cipherText, err := rsa.EncryptPKCS1v15(rand.Reader, pubKey, plainText)
 	if err != nil {
 		return nil, err

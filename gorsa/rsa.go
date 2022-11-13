@@ -38,12 +38,12 @@ func (rsas *RSASecurity) SetPrivateKey(priStr string) (err error) {
 
 // *rsa.PublicKey
 func (rsas *RSASecurity) GetPrivatekey() (*rsa.PrivateKey, error) {
-	return GetPriKey([]byte(rsas.priStr))
+	return GetPriKey_PEM([]byte(rsas.priStr))
 }
 
 // *rsa.PrivateKey
 func (rsas *RSASecurity) GetPublickey() (*rsa.PublicKey, error) {
-	return GetPubKey([]byte(rsas.pubStr))
+	return GetPubKey_PEM([]byte(rsas.pubStr))
 }
 
 // 公钥加密

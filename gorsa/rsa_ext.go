@@ -5,11 +5,14 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/pem"
 	"errors"
 	"io"
 	"io/ioutil"
 	"math/big"
+	"regexp"
 )
 
 var (
@@ -22,8 +25,8 @@ var (
 	ErrPrivateKey      = errors.New("get private key error")
 )
 
-// 设置公钥
-func GetPubKey(pubPEM []byte) (*rsa.PublicKey, error) {
+// 设置公钥PEM
+func GetPubKey_PEM(pubPEM []byte) (*rsa.PublicKey, error) {
 	// decode public key
 	block, _ := pem.Decode(pubPEM)
 	if block == nil {
@@ -40,8 +43,50 @@ func GetPubKey(pubPEM []byte) (*rsa.PublicKey, error) {
 	return pub.(*rsa.PublicKey), err
 }
 
+// 设置公钥Pbstr,通过hexNstr,hexEstr
+func GetPubKey_NE(hexN string, hexE string) (*rsa.PublicKey, error) {
+	// 另一种创建pubkey的方法
+	bigN := new(big.Int)
+	bigN.SetString(hexN, 16)
+	bigE := new(big.Int)
+	bigE.SetString(hexE, 16)
+
+	pubkey := &rsa.PublicKey{
+		N: bigN,
+		E: int(bigE.Int64()),
+	}
+	return pubkey, nil
+}
+
+// 设置公钥Pbstr
+func GetPubKey_Pubstr(pubstr string) (*rsa.PublicKey, error) {
+	// decode public key
+	r := regexp.MustCompile(`^[0-9a-fA-F]+$`)
+	publicKeyBinary := make([]byte, 0)
+	if r.MatchString(pubstr) {
+		// hex decode.
+		b, _ := hex.DecodeString(pubstr)
+		publicKeyBinary = append(publicKeyBinary, b...)
+	} else {
+		// Base64 decode.
+		b, _ := base64.StdEncoding.DecodeString(pubstr)
+		publicKeyBinary = append(publicKeyBinary, b...)
+	}
+	rsaPk, err := x509.ParsePKIXPublicKey(publicKeyBinary)
+	if err != nil {
+		return nil, err
+	}
+	if err != nil {
+		rsaPk, err = x509.ParsePKCS1PublicKey(publicKeyBinary)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return rsaPk.(*rsa.PublicKey), err
+}
+
 // 设置私钥
-func GetPriKey(priPEM []byte) (*rsa.PrivateKey, error) {
+func GetPriKey_PEM(priPEM []byte) (*rsa.PrivateKey, error) {
 	block, _ := pem.Decode(priPEM)
 	if block == nil {
 		return nil, errors.New("get private key error")
@@ -135,7 +180,7 @@ func pubKeyIO(pub *rsa.PublicKey, in io.Reader, out io.Writer, isEncrytp bool) (
 			return err
 		}
 	}
-	
+
 }
 
 // 私钥加密或解密Reader
@@ -172,7 +217,7 @@ func priKeyIO(pri *rsa.PrivateKey, r io.Reader, w io.Writer, isEncrytp bool) (er
 			return err
 		}
 	}
-	
+
 }
 
 // 公钥解密
@@ -358,21 +403,6 @@ func modInverse(a, n *big.Int) (ia *big.Int, ok bool) {
 	return x, true
 }
 
-// 另一种创建pubkey的方法,通过N,E
-func ReadNE(hexN string, hexE string) (*rsa.PublicKey, error) {
-	// 另一种创建pubkey的方法
-	bigN := new(big.Int)
-	bigN.SetString(hexN, 16)
-	bigE := new(big.Int)
-	bigE.SetString(hexE, 16)
-	
-	pubkey := &rsa.PublicKey{
-		N: bigN,
-		E: int(bigE.Int64()),
-	}
-	return pubkey, nil
-}
-
 // 输出pem格式的公钥
 func Pubkey_to_pem(pubkey *rsa.PublicKey) string {
 	//输出pem格式的公钥
@@ -384,4 +414,10 @@ func Pubkey_to_pem(pubkey *rsa.PublicKey) string {
 	pubkey_b := pem.EncodeToMemory(block)
 
 	return string(pubkey_b)
+}
+
+// 输出公钥的字节集
+func Pubkey_to_Bytes(pubkey *rsa.PublicKey) []byte {
+	derPubkey, _ := x509.MarshalPKIXPublicKey(pubkey)
+	return derPubkey
 }
